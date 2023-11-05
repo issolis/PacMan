@@ -1,6 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <WinSock2.h>
+
+#pragma comment(lib, "ws2_32.lib")
+
+SOCKET serverSocket;
 
 /*---------------PathFinding Data Structures--------------------*/
 struct node
@@ -16,6 +26,8 @@ struct node
     int g; 
 
 } *head;
+
+char route[250] = "";
 
 struct nodeList
 {
@@ -124,6 +136,7 @@ void showIdList (){
     struct nodeId *current = IdHead; 
     while (current!=NULL){
         printf("%i ", current->id); 
+        sprintf(route + strlen(route), "%i ", current->id);
         current = current->next;
     }
 }
@@ -368,6 +381,134 @@ void constructor(){
     IdHead->next=NULL; 
     
 }
+
+//-----------------------Server-------------------//
+
+int extractNumber(const char *str, int pos) {
+    int number = 0;
+    int currentPos = 0;
+    int len = strlen(str);
+    int startIndex = -1;
+
+    for (int i = 0; i < len; i++) {
+        if (isdigit(str[i])) {
+            if (startIndex == -1) {
+                startIndex = i;
+            }
+        } else {
+            if (startIndex != -1) {
+                currentPos++;
+                if (currentPos == pos) {
+                    char numberStr[20]; // Tamaño suficiente para números razonables
+                    strncpy(numberStr, str + startIndex, i - startIndex);
+                    numberStr[i - startIndex] = '\0';
+                    number = atoi(numberStr);
+                    break;
+                }
+                startIndex = -1;
+            }
+        }
+    }
+
+    return number;
+}
+
+
+int initServer(int serverPort) {
+    WSADATA wsaData;
+
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        fprintf(stderr, "Error al inicializar Winsock.\n");
+        return 1;
+    }
+
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket == INVALID_SOCKET) {
+        fprintf(stderr, "Error al crear el socket del servidor.\n");
+        WSACleanup();
+        return 1;
+    }
+
+    struct sockaddr_in serverAddr;
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(serverPort);
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+
+    if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+        fprintf(stderr, "Error al enlazar el socket del servidor.\n");
+        closesocket(serverSocket);
+        WSACleanup();
+        return 1;
+    }
+
+    if (listen(serverSocket, 1) == SOCKET_ERROR) {
+        fprintf(stderr, "Error al poner el servidor en modo escucha.\n");
+        closesocket(serverSocket);
+        WSACleanup();
+        return 1;
+    }
+
+    return 0;
+}
+
+void receiveMessage() {
+    struct sockaddr_in clientAddr;
+    int clientAddrSize = sizeof(clientAddr);
+    SOCKET clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrSize);
+
+    if (clientSocket == INVALID_SOCKET) {
+        fprintf(stderr, "Error al aceptar la conexión del cliente.\n");
+        closesocket(serverSocket);
+        WSACleanup();
+        return;
+    }
+
+    char buffer[256];
+    int bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0);
+
+    if (bytesRead > 0) {
+        buffer[bytesRead] = '\0';
+        printf("Mensaje del cliente: %s\n", buffer);
+        const char* response = "RECIBIDO";
+        if (buffer[0]=='p'){
+            int start = extractNumber(buffer, 1); 
+            int end = extractNumber(buffer, 2);
+            
+            int raw = 8;
+            int colum = 8;
+            printf("%i %i", start, end); 
+            constructor(); 
+            madeMatrix(raw, colum);
+            blockNodes(); 
+            pathfinding(start, end); 
+            printMatrix(); 
+            response = route;  
+            
+        }
+
+        
+        send(clientSocket, response, strlen(response), 0);
+        strcpy(route, ""); 
+    }
+
+    closesocket(clientSocket);
+}
+
+int main() {
+    if (initServer(12345) != 0) {
+        return 1;
+    }
+
+    while (1) {
+        receiveMessage();
+    }
+
+    closesocket(serverSocket);
+    WSACleanup();
+
+    return 0;
+}
+
 /*
 int main() {
    
@@ -378,6 +519,7 @@ int main() {
     blockNodes(); 
     pathfinding(18, 55); 
     printMatrix(); 
+    printf("%s", route); 
     return 0;
-}
-*/
+}*/
+

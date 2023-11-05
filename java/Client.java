@@ -12,7 +12,7 @@ public class Client {
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
             System.out.println("Conectado al servidor.");
-            out.println("Buena puta!"); // Enviar un mensaje al servidor
+            out.println("p 3 63"); // Enviar un mensaje al servidor
             String response = in.readLine(); // Leer la respuesta del servidor
             System.out.println("Respuesta del servidor: " + response);
 
