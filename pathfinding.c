@@ -368,7 +368,7 @@ void constructor(){
     IdHead->next=NULL; 
     
 }
-
+/*
 int main() {
    
     int raw = 8;
@@ -380,3 +380,4 @@ int main() {
     printMatrix(); 
     return 0;
 }
+*/
